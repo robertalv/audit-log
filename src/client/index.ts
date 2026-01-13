@@ -14,7 +14,6 @@ import { v } from "convex/values";
  * The component API type. This is a placeholder that will be properly typed
  * when the user imports from their generated component types.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AuditLogComponentApi = any;
 
 /**

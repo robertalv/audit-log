@@ -2,10 +2,7 @@ import { v } from "convex/values";
 import {
   mutation,
   query,
-  internalMutation,
-  internalQuery,
 } from "./_generated/server.js";
-import { internal } from "./_generated/api.js";
 import schema from "./schema.js";
 import {
   vSeverity,
@@ -607,6 +604,8 @@ export const generateReport = query({
 
 /**
  * Get statistics for audit logs.
+ * Note: For real-time reactivity, this query reads all logs within the time window
+ * without an upper bound, ensuring new logs trigger subscription updates.
  */
 export const getStats = query({
   args: {
@@ -635,15 +634,20 @@ export const getStats = query({
     ),
   }),
   handler: async (ctx, args) => {
+    // Use provided fromTimestamp or default to 24 hours ago
     const fromTimestamp = args.fromTimestamp ?? Date.now() - 24 * 60 * 60 * 1000;
-    const toTimestamp = args.toTimestamp ?? Date.now();
 
-    const logs = await ctx.db
+    // Query all logs from the timestamp forward (no upper bound for reactivity)
+    // This ensures new log inserts trigger subscription updates
+    const allLogs = await ctx.db
       .query("auditLogs")
-      .withIndex("by_timestamp", (q) =>
-        q.gte("timestamp", fromTimestamp).lte("timestamp", toTimestamp)
-      )
+      .withIndex("by_timestamp", (q) => q.gte("timestamp", fromTimestamp))
       .collect();
+
+    // Apply toTimestamp filter in memory if specified
+    const logs = args.toTimestamp
+      ? allLogs.filter((log) => log.timestamp <= args.toTimestamp!)
+      : allLogs;
 
     // Count by severity
     const bySeverity = {

@@ -30,7 +30,7 @@ body {
 }
 
 .app {
-  max-width: 1000px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -59,40 +59,29 @@ body {
   font-size: 0.85rem;
 }
 
-/* Tabs */
-.tabs {
+/* Main Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.left-panel {
   display: flex;
-  gap: 0;
-  margin-bottom: 1.5rem;
-  border: 1px solid var(--border);
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.tabs button {
-  flex: 1;
-  padding: 0.5rem 1rem;
-  background: var(--bg);
-  border: none;
-  border-right: 1px solid var(--border);
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.tabs button:last-child {
-  border-right: none;
-}
-
-.tabs button:hover {
-  background: var(--bg-alt);
-  color: var(--text-dim);
-}
-
-.tabs button.active {
-  background: var(--bg-alt);
-  color: var(--accent);
+.right-panel {
+  position: sticky;
+  top: 1.5rem;
 }
 
 /* Sections */
@@ -109,12 +98,53 @@ section h2 {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-/* Actions Grid */
+section h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.7rem;
+  font-weight: normal;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Live indicator */
+.live-indicator {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 4px var(--accent);
+}
+
+.live-indicator.active {
+  animation: pulse-active 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--accent); }
+  50% { opacity: 0.3; box-shadow: 0 0 2px var(--accent); }
+}
+
+@keyframes pulse-active {
+  0% { transform: scale(1); box-shadow: 0 0 4px var(--accent); }
+  50% { transform: scale(1.8); box-shadow: 0 0 12px var(--accent); }
+  100% { transform: scale(1); box-shadow: 0 0 4px var(--accent); }
+}
+
+/* Actions */
+.actions-section {
+  flex-shrink: 0;
+}
+
 .actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.5rem;
 }
 
@@ -153,11 +183,32 @@ section h2 {
   color: var(--text-muted);
 }
 
-/* Log List */
+/* Logs */
+.logs-section {
+  flex: 1;
+  min-height: 300px;
+}
+
 .log-list {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
   font-size: 0.75rem;
+}
+
+/* New log entry animation */
+.log-entry.new {
+  animation: flash-in 0.6s ease-out;
+}
+
+@keyframes flash-in {
+  0% {
+    background: rgba(0, 255, 0, 0.3);
+    transform: translateX(-4px);
+  }
+  100% {
+    background: transparent;
+    transform: translateX(0);
+  }
 }
 
 .log-list::-webkit-scrollbar {
@@ -203,6 +254,8 @@ section h2 {
   font-size: 0.65rem;
   padding: 0.1rem 0.3rem;
   text-transform: uppercase;
+  min-width: 50px;
+  text-align: center;
 }
 
 .log-severity.info { color: var(--info); }
@@ -241,22 +294,35 @@ section h2 {
   padding: 1rem 0;
 }
 
-/* Stats */
-.stats-row {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+/* Stats Panel */
+.stats-section {
+  height: fit-content;
 }
 
-.stat {
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
   text-align: center;
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   color: var(--accent);
   font-weight: bold;
+  line-height: 1.2;
+  transition: transform 0.15s ease-out;
+}
+
+.stat-value.changed {
+  animation: stat-bump 0.3s ease-out;
+}
+
+@keyframes stat-bump {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .stat-value.info { color: var(--info); }
@@ -265,76 +331,89 @@ section h2 {
 .stat-value.critical { color: var(--critical); }
 
 .stat-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-/* Two column layout */
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+/* Stats blocks */
+.stats-block {
+  margin-bottom: 1.25rem;
 }
 
-@media (max-width: 700px) {
-  .two-col {
-    grid-template-columns: 1fr;
-  }
+.stats-block:last-child {
+  margin-bottom: 0;
 }
 
-.col h3 {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.7rem;
-  font-weight: normal;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.col ul {
+.stats-block ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.col li {
+.stats-block li {
   display: flex;
   justify-content: space-between;
   padding: 0.3rem 0;
   border-bottom: 1px solid var(--border);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
 }
 
-.col li:last-child {
+.stats-block li:last-child {
   border-bottom: none;
 }
 
-.col li span:first-child {
+.stats-block li span:first-child {
   color: var(--text-dim);
 }
 
-.col li span:last-child {
+.stats-block li span:last-child {
   color: var(--accent);
   font-weight: bold;
 }
 
 /* Anomalies */
 .anomaly {
-  padding: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem;
   background: rgba(255, 0, 68, 0.1);
   border: 1px solid var(--critical);
   margin-bottom: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  animation: anomaly-alert 0.5s ease-out;
+}
+
+@keyframes anomaly-alert {
+  0% {
+    background: rgba(255, 0, 68, 0.4);
+    transform: translateX(-2px);
+  }
+  25% { transform: translateX(2px); }
+  50% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+  100% {
+    background: rgba(255, 0, 68, 0.1);
+    transform: translateX(0);
+  }
+}
+
+.anomaly:last-child {
+  margin-bottom: 0;
 }
 
 .anomaly strong {
   color: var(--critical);
 }
 
+.anomaly span {
+  color: var(--text-muted);
+}
+
 .no-anomalies {
   color: var(--text-muted);
+  font-size: 0.7rem;
 }
 
 .loading {

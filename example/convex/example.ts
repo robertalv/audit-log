@@ -272,7 +272,7 @@ export const watchSecurityEvents = query({
 });
 
 /**
- * Get audit log statistics.
+ * Get audit log statistics - queries component directly for real-time updates.
  */
 export const getAuditStats = query({
   args: {
@@ -280,27 +280,31 @@ export const getAuditStats = query({
   },
   handler: async (ctx, args) => {
     const hoursBack = args.hoursBack ?? 24;
-    return await auditLog.getStats(ctx, {
+    // Query the component directly for real-time reactivity
+    return await ctx.runQuery(components.auditLog.lib.getStats, {
       fromTimestamp: Date.now() - hoursBack * 60 * 60 * 1000,
     });
   },
 });
 
 /**
- * Detect anomalies in login attempts.
+ * Detect anomalies in login attempts - queries component directly for real-time updates.
  */
 export const detectLoginAnomalies = query({
   args: {},
   handler: async (ctx) => {
-    return await auditLog.detectAnomalies(ctx, [
-      { action: AuditActions.USER_LOGIN_FAILED, threshold: 5, windowMinutes: 5 },
-      { action: AuditActions.UNAUTHORIZED_ACCESS, threshold: 3, windowMinutes: 10 },
-    ]);
+    // Query the component directly for real-time reactivity
+    return await ctx.runQuery(components.auditLog.lib.detectAnomalies, {
+      patterns: [
+        { action: AuditActions.USER_LOGIN_FAILED, threshold: 5, windowMinutes: 5 },
+        { action: AuditActions.UNAUTHORIZED_ACCESS, threshold: 3, windowMinutes: 10 },
+      ],
+    });
   },
 });
 
 /**
- * Advanced search with filters.
+ * Advanced search with filters - queries component directly for real-time updates.
  */
 export const searchAuditLogs = query({
   args: {
@@ -311,7 +315,8 @@ export const searchAuditLogs = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await auditLog.search(ctx, {
+    // Query the component directly for real-time reactivity
+    return await ctx.runQuery(components.auditLog.lib.search, {
       filters: {
         severity: args.severity as any,
         actions: args.actions,
