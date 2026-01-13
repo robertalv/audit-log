@@ -1,6 +1,6 @@
 # Convex Audit Log Component
 
-[![npm version](https://badge.fury.io/js/@convex-dev%2Faudit-log.svg)](https://badge.fury.io/js/@convex-dev%2Faudit-log)
+[![npm version](https://badge.fury.io/js/convex-audit-log.svg)](https://badge.fury.io/js/convex-audit-log)
 
 A comprehensive audit logging component for Convex that helps you track user actions, API calls, and system events with built-in compliance features.
 
@@ -19,7 +19,7 @@ A comprehensive audit logging component for Convex that helps you track user act
 ## Installation
 
 ```bash
-npm install @convex-dev/audit-log
+npm install convex-audit-log
 ```
 
 Create a `convex.config.ts` file in your app's `convex/` folder and install the component:
@@ -27,7 +27,7 @@ Create a `convex.config.ts` file in your app's `convex/` folder and install the 
 ```ts
 // convex/convex.config.ts
 import { defineApp } from "convex/server";
-import auditLog from "@convex-dev/audit-log/convex.config.js";
+import auditLog from "convex-audit-log/convex.config.js";
 
 const app = defineApp();
 app.use(auditLog);
@@ -41,7 +41,7 @@ export default app;
 
 ```ts
 // convex/auditLog.ts
-import { AuditLog } from "@convex-dev/audit-log";
+import { AuditLog } from "convex-audit-log";
 import { components } from "./_generated/api";
 
 export const auditLog = new AuditLog(components.auditLog, {
@@ -295,7 +295,7 @@ import {
   useAuditLogStats,
   formatTimestamp,
   getSeverityColor,
-} from "@convex-dev/audit-log/react";
+} from "convex-audit-log/react";
 import { api } from "../convex/_generated/api";
 
 function DocumentHistory({ documentId }: { documentId: string }) {
@@ -325,7 +325,7 @@ function DocumentHistory({ documentId }: { documentId: string }) {
 Use the provided action constants for consistency:
 
 ```ts
-import { AuditActions } from "@convex-dev/audit-log";
+import { AuditActions } from "convex-audit-log";
 
 await auditLog.log(ctx, {
   action: AuditActions.USER_LOGIN,
@@ -347,7 +347,7 @@ Available actions:
 
 ```ts
 // convex/auditLog.ts
-import { exposeAuditLogApi } from "@convex-dev/audit-log";
+import { exposeAuditLogApi } from "convex-audit-log";
 import { components } from "./_generated/api";
 
 export const {
@@ -371,7 +371,7 @@ export const {
 ```ts
 import { test } from "vitest";
 import { convexTest } from "convex-test";
-import auditLogComponent from "@convex-dev/audit-log/test";
+import auditLogComponent from "convex-audit-log/test";
 import schema from "./schema";
 
 test("audit logging", async () => {

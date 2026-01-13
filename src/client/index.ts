@@ -120,7 +120,7 @@ type MutationCtx = Pick<
  *
  * @example
  * ```typescript
- * import { AuditLog } from "@convex-dev/audit-log";
+ * import { AuditLog } from "convex-audit-log";
  * import { components } from "./_generated/api";
  *
  * const auditLog = new AuditLog(components.auditLog, {
@@ -384,7 +384,7 @@ export class AuditLog {
  * @example
  * ```typescript
  * // In convex/auditLog.ts
- * import { exposeAuditLogApi } from "@convex-dev/audit-log";
+ * import { exposeAuditLogApi } from "convex-audit-log";
  * import { components } from "./_generated/api";
  *
  * export const { queryByResource, queryByActor, getStats } = exposeAuditLogApi(

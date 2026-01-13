@@ -51,7 +51,7 @@ export interface Anomaly {
  *
  * @example
  * ```tsx
- * import { useAuditLogByResource } from "@convex-dev/audit-log/react";
+ * import { useAuditLogByResource } from "convex-audit-log/react";
  * import { api } from "../convex/_generated/api";
  *
  * function DocumentHistory({ documentId }: { documentId: string }) {
@@ -97,7 +97,7 @@ export function useAuditLogByResource(
  *
  * @example
  * ```tsx
- * import { useAuditLogByActor } from "@convex-dev/audit-log/react";
+ * import { useAuditLogByActor } from "convex-audit-log/react";
  * import { api } from "../convex/_generated/api";
  *
  * function UserActivity({ userId }: { userId: string }) {
@@ -140,7 +140,7 @@ export function useAuditLogByActor(
  *
  * @example
  * ```tsx
- * import { useWatchCriticalEvents } from "@convex-dev/audit-log/react";
+ * import { useWatchCriticalEvents } from "convex-audit-log/react";
  * import { api } from "../convex/_generated/api";
  *
  * function SecurityAlerts() {
@@ -182,7 +182,7 @@ export function useWatchCriticalEvents(
  *
  * @example
  * ```tsx
- * import { useAuditLogStats } from "@convex-dev/audit-log/react";
+ * import { useAuditLogStats } from "convex-audit-log/react";
  * import { api } from "../convex/_generated/api";
  *
  * function Dashboard() {
@@ -222,7 +222,7 @@ export function useAuditLogStats(
  *
  * @example
  * ```tsx
- * import { useAnomalyDetection } from "@convex-dev/audit-log/react";
+ * import { useAnomalyDetection } from "convex-audit-log/react";
  * import { api } from "../convex/_generated/api";
  *
  * function AnomalyMonitor() {

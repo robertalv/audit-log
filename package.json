@@ -1,5 +1,5 @@
 {
-  "name": "@convex-dev/audit-log",
+  "name": "convex-audit-log",
   "description": "A comprehensive audit logging component for Convex - track user actions, API calls, and system events with built-in compliance features.",
   "repository": "github:robertalv/audit-log",
   "homepage": "https://github.com/robertalv/audit-log#readme",

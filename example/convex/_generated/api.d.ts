@@ -49,5 +49,5 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  auditLog: import("@convex-dev/audit-log/_generated/component.js").ComponentApi<"auditLog">;
+  auditLog: import("convex-audit-log/_generated/component.js").ComponentApi<"auditLog">;
 };

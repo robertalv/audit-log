@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server.js";
 import { components } from "./_generated/api.js";
-import { AuditLog, exposeAuditLogApi, AuditActions } from "@convex-dev/audit-log";
+import { AuditLog, exposeAuditLogApi, AuditActions } from "convex-audit-log";
 import { v } from "convex/values";
 import { Auth } from "convex/server";
 

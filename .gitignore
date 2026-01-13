@@ -13,3 +13,5 @@ node_modules
 # npm pack output
 *.tgz
 *.tsbuildinfo
+.vercel
+.env*.local
