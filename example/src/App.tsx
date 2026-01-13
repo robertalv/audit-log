@@ -65,12 +65,16 @@ function LogsPanel() {
   const logs = useQuery(api.example.searchAuditLogs, { limit: 30 });
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  if (logs === undefined) {
+    return <section><h2>Recent Events</h2><div className="loading">loading</div></section>;
+  }
+
   return (
     <section>
       <h2>Recent Events</h2>
       <div className="log-list">
-        {logs?.items?.length === 0 && <div className="empty">no events yet</div>}
-        {logs?.items?.map((log: Log) => (
+        {logs.items.length === 0 && <div className="empty">no events yet</div>}
+        {logs.items.map((log: Log) => (
           <div key={log._id} className="log-entry" onClick={() => setExpanded(expanded === log._id ? null : log._id)}>
             <div className="log-line">
               <span className="log-time">{formatTime(log.timestamp)}</span>
