@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run build && cd example && npx vite build",
+  "outputDirectory": "example/dist",
+  "installCommand": "npm install",
+  "framework": null
+}
