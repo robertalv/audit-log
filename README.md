@@ -1,6 +1,7 @@
 # Convex Audit Log Component
 
 [![npm version](https://badge.fury.io/js/convex-audit-log.svg)](https://badge.fury.io/js/convex-audit-log)
+[![Convex](https://img.shields.io/badge/Convex-Component-FF953F?logo=convex&logoColor=white)](https://convex.dev/components)
 
 A comprehensive audit logging component for Convex that helps you track user actions, API calls, and system events with built-in compliance features.
 
