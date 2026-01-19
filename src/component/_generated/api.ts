@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aggregates from "../aggregates.js";
 import type * as lib from "../lib.js";
 import type * as shared from "../shared.js";
 
@@ -19,6 +20,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  aggregates: typeof aggregates;
   lib: typeof lib;
   shared: typeof shared;
 }> = anyApi as any;
@@ -49,4 +51,7 @@ export const internal: FilterApi<
   FunctionReference<any, "internal">
 > = anyApi as any;
 
-export const components = componentsGeneric() as unknown as {};
+export const components = componentsGeneric() as unknown as {
+  aggregateBySeverity: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"aggregateBySeverity">;
+  aggregateByAction: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"aggregateByAction">;
+};

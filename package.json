@@ -2,11 +2,11 @@
   "name": "convex-audit-log",
   "description": "A comprehensive audit logging component for Convex - track user actions, API calls, and system events with built-in compliance features.",
   "repository": "github:robertalv/audit-log",
-  "homepage": "https://github.com/robertalv/audit-log#readme",
+  "homepage": "https://audit-log.devwithbobby.com",
   "bugs": {
     "url": "https://github.com/robertalv/audit-log/issues"
   },
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "keywords": [
     "convex",
@@ -111,5 +111,8 @@
     "vitest": "4.0.17"
   },
   "types": "./dist/client/index.d.ts",
-  "module": "./dist/client/index.js"
+  "module": "./dist/client/index.js",
+  "dependencies": {
+    "@convex-dev/aggregate": "^0.2.1"
+  }
 }

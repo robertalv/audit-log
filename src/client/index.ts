@@ -341,6 +341,33 @@ export class AuditLog {
     return await ctx.runMutation(this.component.lib.updateConfig, options);
   }
 
+  /**
+   * Backfill aggregates for existing audit log data.
+   * Run this once after upgrading to populate the aggregate tables for efficient counting.
+   * Call repeatedly until isDone is true.
+   *
+   * @example
+   * ```typescript
+   * let cursor: string | null = null;
+   * let isDone = false;
+   * while (!isDone) {
+   *   const result = await auditLog.backfillAggregates(ctx, { cursor });
+   *   cursor = result.cursor;
+   *   isDone = result.isDone;
+   *   console.log(`Processed ${result.processed} records`);
+   * }
+   * ```
+   */
+  async backfillAggregates(
+    ctx: MutationCtx,
+    options?: { cursor?: string | null; batchSize?: number }
+  ): Promise<{ processed: number; cursor: string | null; isDone: boolean }> {
+    return await ctx.runMutation(this.component.lib.runBackfill, {
+      cursor: options?.cursor ?? undefined,
+      batchSize: options?.batchSize,
+    });
+  }
+
   private redactPII(event: AuditEventInput): AuditEventInput {
     if (!event.metadata || this.piiFields.size === 0) {
       return event;

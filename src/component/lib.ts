@@ -2,7 +2,9 @@ import { v } from "convex/values";
 import {
   mutation,
   query,
+  internalMutation,
 } from "./_generated/server.js";
+import type { Id } from "./_generated/dataModel.js";
 import schema from "./schema.js";
 import {
   vSeverity,
@@ -14,6 +16,7 @@ import {
   vConfigOptions,
   type Severity,
 } from "./shared.js";
+import { aggregateBySeverity, aggregateByAction } from "./aggregates.js";
 
 const auditLogValidator = schema.tables.auditLogs.validator.extend({
   _id: v.id("auditLogs"),
@@ -33,6 +36,11 @@ export const log = mutation({
       ...args,
       timestamp,
     });
+
+    // Insert into aggregates for efficient counting
+    const doc = (await ctx.db.get(logId))!;
+    await aggregateBySeverity.insert(ctx, doc);
+    await aggregateByAction.insert(ctx, doc);
 
     return logId;
   },
@@ -69,6 +77,11 @@ export const logChange = mutation({
       timestamp,
     });
 
+    // Insert into aggregates for efficient counting
+    const doc = (await ctx.db.get(logId))!;
+    await aggregateBySeverity.insert(ctx, doc);
+    await aggregateByAction.insert(ctx, doc);
+
     return logId;
   },
 });
@@ -91,9 +104,14 @@ export const logBulk = mutation({
         timestamp,
       });
       ids.push(logId);
+
+      // Insert into aggregates for efficient counting
+      const doc = (await ctx.db.get(logId))!;
+      await aggregateBySeverity.insert(ctx, doc);
+      await aggregateByAction.insert(ctx, doc);
     }
 
-    return ids as any;
+    return ids as Id<"auditLogs">[];
   },
 });
 
@@ -383,6 +401,10 @@ export const cleanup = mutation({
         continue;
       }
 
+      // Delete from aggregates first
+      await aggregateBySeverity.delete(ctx, log);
+      await aggregateByAction.delete(ctx, log);
+
       await ctx.db.delete(log._id);
       deletedCount++;
     }
@@ -468,6 +490,7 @@ export const updateConfig = mutation({
 
 /**
  * Detect anomalies based on event frequency patterns.
+ * Uses aggregates for efficient O(log n) counting instead of reading all documents.
  */
 export const detectAnomalies = query({
   args: {
@@ -495,17 +518,18 @@ export const detectAnomalies = query({
     for (const pattern of args.patterns) {
       const windowStart = now - pattern.windowMinutes * 60 * 1000;
 
-      const events = await ctx.db
-        .query("auditLogs")
-        .withIndex("by_action_timestamp", (q) =>
-          q.eq("action", pattern.action).gte("timestamp", windowStart)
-        )
-        .collect();
+      // Use aggregate for efficient counting - O(log n) instead of reading all documents
+      const count = await aggregateByAction.count(ctx, {
+        namespace: [pattern.action],
+        bounds: {
+          lower: { key: windowStart, inclusive: true },
+        },
+      });
 
-      if (events.length >= pattern.threshold) {
+      if (count >= pattern.threshold) {
         anomalies.push({
           action: pattern.action,
-          count: events.length,
+          count,
           threshold: pattern.threshold,
           windowMinutes: pattern.windowMinutes,
           detectedAt: now,
@@ -518,7 +542,15 @@ export const detectAnomalies = query({
 });
 
 /**
+ * Maximum number of records to include in a single report.
+ * This prevents unbounded queries from reading too many documents.
+ */
+const MAX_REPORT_RECORDS = 10000;
+
+/**
  * Generate a report of audit logs.
+ * Note: Limited to MAX_REPORT_RECORDS to prevent unbounded queries.
+ * For larger exports, use pagination or scheduled exports.
  */
 export const generateReport = query({
   args: {
@@ -527,20 +559,27 @@ export const generateReport = query({
     format: v.union(v.literal("json"), v.literal("csv")),
     includeFields: v.optional(v.array(v.string())),
     groupBy: v.optional(v.string()),
+    maxRecords: v.optional(v.number()),
   },
   returns: v.object({
     format: v.union(v.literal("json"), v.literal("csv")),
     data: v.string(),
     generatedAt: v.number(),
     recordCount: v.number(),
+    truncated: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    const limit = Math.min(args.maxRecords ?? MAX_REPORT_RECORDS, MAX_REPORT_RECORDS);
+
     const logs = await ctx.db
       .query("auditLogs")
       .withIndex("by_timestamp", (q) =>
         q.gte("timestamp", args.startDate).lte("timestamp", args.endDate)
       )
-      .collect();
+      .take(limit + 1); // Fetch one extra to detect truncation
+
+    const truncated = logs.length > limit;
+    const logsToProcess = truncated ? logs.slice(0, limit) : logs;
 
     const includeFields = args.includeFields ?? [
       "timestamp",
@@ -551,7 +590,7 @@ export const generateReport = query({
       "severity",
     ];
 
-    const filteredLogs = logs.map((log) => {
+    const filteredLogs = logsToProcess.map((log) => {
       const filtered: Record<string, unknown> = {};
       for (const field of includeFields) {
         if (field in log) {
@@ -598,14 +637,21 @@ export const generateReport = query({
       data,
       generatedAt: Date.now(),
       recordCount: filteredLogs.length,
+      truncated,
     };
   },
 });
 
 /**
+ * Maximum number of logs to read for computing top actions/actors.
+ * Severity counts use aggregates for O(log n) performance.
+ */
+const MAX_STATS_SAMPLE_SIZE = 1000;
+
+/**
  * Get statistics for audit logs.
- * Note: For real-time reactivity, this query reads all logs within the time window
- * without an upper bound, ensuring new logs trigger subscription updates.
+ * Uses aggregates for efficient O(log n) severity counting.
+ * Top actions/actors are computed from a bounded sample for performance.
  */
 export const getStats = query({
   args: {
@@ -637,32 +683,48 @@ export const getStats = query({
     // Use provided fromTimestamp or default to 24 hours ago
     const fromTimestamp = args.fromTimestamp ?? Date.now() - 24 * 60 * 60 * 1000;
 
-    // Query all logs from the timestamp forward (no upper bound for reactivity)
-    // This ensures new log inserts trigger subscription updates
-    const allLogs = await ctx.db
+    // Build bounds for aggregate queries
+    const bounds: { lower: { key: number; inclusive: boolean }; upper?: { key: number; inclusive: boolean } } = {
+      lower: { key: fromTimestamp, inclusive: true },
+    };
+    if (args.toTimestamp) {
+      bounds.upper = { key: args.toTimestamp, inclusive: true };
+    }
+
+    // Use aggregates for efficient O(log n) severity counting
+    const [infoCount, warningCount, errorCount, criticalCount] = await Promise.all([
+      aggregateBySeverity.count(ctx, { namespace: ["info"], bounds }),
+      aggregateBySeverity.count(ctx, { namespace: ["warning"], bounds }),
+      aggregateBySeverity.count(ctx, { namespace: ["error"], bounds }),
+      aggregateBySeverity.count(ctx, { namespace: ["critical"], bounds }),
+    ]);
+
+    const bySeverity = {
+      info: infoCount,
+      warning: warningCount,
+      error: errorCount,
+      critical: criticalCount,
+    };
+
+    const totalCount = infoCount + warningCount + errorCount + criticalCount;
+
+    // For top actions and actors, we need to read a sample of logs
+    // Limited to MAX_STATS_SAMPLE_SIZE to prevent unbounded queries
+    const recentLogs = await ctx.db
       .query("auditLogs")
       .withIndex("by_timestamp", (q) => q.gte("timestamp", fromTimestamp))
-      .collect();
+      .order("desc")
+      .take(MAX_STATS_SAMPLE_SIZE);
 
     // Apply toTimestamp filter in memory if specified
     const logs = args.toTimestamp
-      ? allLogs.filter((log) => log.timestamp <= args.toTimestamp!)
-      : allLogs;
-
-    // Count by severity
-    const bySeverity = {
-      info: 0,
-      warning: 0,
-      error: 0,
-      critical: 0,
-    };
+      ? recentLogs.filter((log) => log.timestamp <= args.toTimestamp!)
+      : recentLogs;
 
     const actionCounts: Record<string, number> = {};
     const actorCounts: Record<string, number> = {};
 
     for (const log of logs) {
-      bySeverity[log.severity]++;
-
       actionCounts[log.action] = (actionCounts[log.action] ?? 0) + 1;
 
       if (log.actorId) {
@@ -683,10 +745,110 @@ export const getStats = query({
       .map(([actorId, count]) => ({ actorId, count }));
 
     return {
-      totalCount: logs.length,
+      totalCount,
       bySeverity,
       topActions,
       topActors,
+    };
+  },
+});
+
+/**
+ * Backfill aggregates for existing audit log data.
+ * Run this once after upgrading to populate the aggregate tables.
+ * This is an internal mutation that should be called from the client wrapper.
+ */
+export const backfillAggregates = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    processed: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = args.batchSize ?? 100;
+
+    let query = ctx.db.query("auditLogs").order("asc");
+
+    // Resume from cursor if provided
+    if (args.cursor) {
+      const cursorDoc = await ctx.db.get(args.cursor as Id<"auditLogs">);
+      if (cursorDoc && "timestamp" in cursorDoc) {
+        query = ctx.db
+          .query("auditLogs")
+          .withIndex("by_timestamp", (q) => q.gt("timestamp", cursorDoc.timestamp))
+          .order("asc");
+      }
+    }
+
+    const docs = await query.take(batchSize + 1);
+    const hasMore = docs.length > batchSize;
+    const toProcess = hasMore ? docs.slice(0, batchSize) : docs;
+
+    for (const doc of toProcess) {
+      // Insert into both aggregates
+      await aggregateBySeverity.insertIfDoesNotExist(ctx, doc);
+      await aggregateByAction.insertIfDoesNotExist(ctx, doc);
+    }
+
+    const lastDoc = toProcess[toProcess.length - 1];
+
+    return {
+      processed: toProcess.length,
+      cursor: hasMore && lastDoc ? lastDoc._id : null,
+      isDone: !hasMore,
+    };
+  },
+});
+
+/**
+ * Public mutation to trigger backfill. Call this to populate aggregates.
+ */
+export const runBackfill = mutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    processed: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const batchSize = args.batchSize ?? 100;
+
+    let query = ctx.db.query("auditLogs").order("asc");
+
+    // Resume from cursor if provided
+    if (args.cursor) {
+      const cursorDoc = await ctx.db.get(args.cursor as Id<"auditLogs">);
+      if (cursorDoc && "timestamp" in cursorDoc) {
+        query = ctx.db
+          .query("auditLogs")
+          .withIndex("by_timestamp", (q) => q.gt("timestamp", cursorDoc.timestamp))
+          .order("asc");
+      }
+    }
+
+    const docs = await query.take(batchSize + 1);
+    const hasMore = docs.length > batchSize;
+    const toProcess = hasMore ? docs.slice(0, batchSize) : docs;
+
+    for (const doc of toProcess) {
+      // Insert into both aggregates (idempotent)
+      await aggregateBySeverity.insertIfDoesNotExist(ctx, doc);
+      await aggregateByAction.insertIfDoesNotExist(ctx, doc);
+    }
+
+    const lastDoc = toProcess[toProcess.length - 1];
+
+    return {
+      processed: toProcess.length,
+      cursor: hasMore && lastDoc ? lastDoc._id : null,
+      isDone: !hasMore,
     };
   },
 });

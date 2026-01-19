@@ -63,6 +63,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           format: "json" | "csv";
           groupBy?: string;
           includeFields?: Array<string>;
+          maxRecords?: number;
           startDate: number;
         },
         {
@@ -70,6 +71,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           format: "json" | "csv";
           generatedAt: number;
           recordCount: number;
+          truncated: boolean;
         },
         Name
       >;
@@ -304,6 +306,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           timestamp: number;
           userAgent?: string;
         }>,
+        Name
+      >;
+      runBackfill: FunctionReference<
+        "mutation",
+        "internal",
+        { batchSize?: number; cursor?: string },
+        { cursor: string | null; isDone: boolean; processed: number },
         Name
       >;
       search: FunctionReference<

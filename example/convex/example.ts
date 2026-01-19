@@ -9,6 +9,26 @@ const auditLog = new AuditLog(components.auditLog, {
 });
 
 /**
+ * List all users.
+ */
+export const listUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").order("desc").take(100);
+  },
+});
+
+/**
+ * List all documents.
+ */
+export const listDocuments = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("documents").order("desc").take(100);
+  },
+});
+
+/**
  * Create a new user and log the event.
  */
 export const createUser = mutation({
